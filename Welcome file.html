@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome file</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><hr>
+<p>Title: “<a href="http://DataQuest.io">DataQuest.io</a> Guided Project: Investigating COVID-19 Virus Trends”</p>
+<p>Author: “Charlie Ha”</p>
+<p>Date: Aug 10, 2020</p>
+<p>Output: html_notebook</p>
+<hr>
+<h1 id="investigating-covid-19-virus-trends">Investigating COVID-19 Virus Trends</h1>
+<p>A pneumonia of unknown cause detected in Wuhan, China was first internationally reported from China on 31 December 2019. Today we know this virus as Coronavirus. COVID-19 which stands for  <strong>CO</strong>rona<strong>VI</strong>rus <strong>D</strong>isease is the disease caused by this virus. Since then, the world has been engaged in the fight against this pandemic. Several measures have therefore been taken to “flatten the curve”. We have consequently experienced social distancing and many people have passed away as well.</p>
+<p>In the solidarity to face this unprecedented global crisis, several organizations did not hesitate to share several datasets allowing the conduction of several kinds of analysis in order to understand this pandemic.</p>
+<p>It is natural for us to analyze these datasets by ourselves to answer questions since we cannot always rely on the news, and we are data scientists.</p>
+<p>This analysis tries to provide an answer to this question:</p>
+<p><strong>Which countries have had the highest number of positive cases against the number of tests?</strong></p>
+<p><strong>Step 1: Understanding the Data</strong><br>
+The full dataset is available from Kaggle <a href="https://www.kaggle.com/lin0li/covid19testing">https://www.kaggle.com/lin0li/covid19testing</a></p>
+<p>The following dataset has been prepared and available for download here:<br>
+<a href="https://dq-content.s3.amazonaws.com/505/covid19.csv">https://dq-content.s3.amazonaws.com/505/covid19.csv</a> &lt;- “covid19.cvs”</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+#Loding the data into RStudio 
+
+library(readr)
+
+covid_df &lt;- read.csv("covid19.csv")
+
+</code></pre>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+#How much data do we have?
+
+dim(covid_df)
+
+</code></pre>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+#What are the column names of the data? 
+
+vector_cols &lt;- colnames(covid_df)
+
+vector_cols
+
+</code></pre>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+#Displaying the first few rows of the dataset
+
+head(covid_df)
+
+</code></pre>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+#Display summary of the dataset using a funtion from thje tibble package
+
+library(tibble)
+
+glimpse(covid_df)
+
+</code></pre>
+<p>From this observation, we deduce that this data consists of 14 <strong>columns</strong> and 10903 <strong>rows</strong>.  We also see that the Province_State column has mixed data from different levels. We will extract only the country-level data in order to not bias our analyses.</p>
+<p><strong>Step 2: Isolating the Rows We Need</strong></p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">#The dataset is filtered using the filter() function from dyplr
+
+library(dplyr)
+
+covid_df_all_states &lt;- filter(covid_df,Province_State=="All States")
+
+</code></pre>
+<p><strong>Step 3: Isolating the Columns We Need</strong></p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">covid_df_all_states_daily &lt;- select(covid_df_all_states,Date, Country_Region, active, hospitalizedCurr, daily_tested, daily_positive)
+
+</code></pre>
+<p><strong>Step 4: Extracting the Top Ten Cases Countries</strong><br>
+Now that we have cleaned up the data, we can now group and aggregate the data by country while summing up daily totals.</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+covid_df_all_states_daily_sum &lt;- covid_df_all_states_daily %&gt;%
+
+group_by(Country_Region) %&gt;%
+
+summarise(tested = sum(daily_tested),
+	      positive = sum(daily_positive),
+		  active = sum(active),
+		  hospitalized = sum(hospitalizedCurr)) %&gt;%
+arrange(-tested)
+
+</code></pre>
+<p>Lets isolate to only the top ten countries:</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+covid_top_10 &lt;- head(covid_df_all_states_daily_sum, 10)
+
+view(covid_top_10)
+
+</code></pre>
+<p><strong>Step 5: Identifying the Highest Positive Against Tested Cases</strong><br>
+Vectors are created from the covid_top_10 dataframe</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+countries &lt;- covid_top_10$Country_Region
+
+tested_cases &lt;- covid_top_10$tested
+
+positive_cases &lt;- covid_top_10$positive
+
+active_cases &lt;- covid_top_10$active
+
+hospitalized_cases &lt;-covid_top_10$hospitalized
+
+</code></pre>
+<p>Now we can name the different vectors with the country names:</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+names(positive_cases) &lt;- countries
+
+names(tested_cases) &lt;- countries
+
+names(active_cases) &lt;- countries
+
+names(hospitalized_cases) &lt;- countries
+
+</code></pre>
+<p>To identify the top three positive against total tested cases, we can divide the vector positive_cases by the vector tested_cases</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+pos_vs_tested&lt;- covid_top_10%&gt;%
+
+mutate(
+
+	positive_vs_tested = positive_cases/tested_cases
+	
+)%&gt;%
+
+arrange(-positive_vs_tested)
+
+View(pos_vs_tested)
+
+positive_tested_top_3 &lt;- c("United Kingdom" = 0.11,"United States" = 0.10,"Turkey" = 0.08)
+
+</code></pre>
+<p><strong>Step 6: Keeping relevant Information</strong><br>
+To make sure we won’t lose other information about these countries we can create a matrix that contains the ratio and the overall number of COVID-19 tested, positive, active and hospitalized cases.</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+united_kingdom &lt;- c(0.11, 1473672, 166909, 0, 0)
+
+united_states &lt;- c(0.10, 17282363, 1877179, 0, 0)
+
+turkey &lt;- c(0.08, 2031192, 163941, 2980960, 0)
+
+covid_mat &lt;- rbind(united_kingdom,united_states,turkey)
+
+colnames(covid_mat) &lt;- c("Ratio", "tested", "positive", "active", "hospitalized")
+
+print(covid_mat)
+</code></pre>
+<p><strong>Step 7: Putting it all together</strong><br>
+We put all our answers and datasets together in a list that allows us to have a global view</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+question &lt;- "Which countries have had the highest number of positive cases against the number of tests?"
+
+answer &lt;- c("Positive tested cases" = positive_tested_top_3)
+
+data_structure_list &lt;- list(covid_df,covid_df_all_states,covid_df_all_states_daily,covid_top_10)
+
+</code></pre>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+#creating a list of matrix used
+
+matrices_list &lt;- list(covid_matrix)
+
+#creating a list of vectors used
+
+vector_list &lt;- list(vector_cols, countries)
+
+#creating a data structure that contain the lists above
+
+data_structure_list &lt;- list("dataframe" = dataset_list, "matrix" = matrices_list, "vector" = vector_list)
+
+</code></pre>
+<p>We can put everything together :</p>
+<pre class=" language-undefined"><code class="prism language-{r} language-undefined">
+covid_analysis_list &lt;- list(question, answer, data_structure_list)
+
+covid_analysis_list[[2]]
+
+</code></pre>
+<p><strong>Conclusion</strong><br>
+After cleaning up the data and performing some simple analysis, we can determine that the countries have had the highest number of positive cases against the number of tests are United Kingdom, United States and Turkey between the 20th of January and the 1st of June 2020.</p>
+</div>
+</body>
+
+</html>
