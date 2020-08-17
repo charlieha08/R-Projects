@@ -1,0 +1,234 @@
+---
+title: "COVID-19 Virus Trends- Part 2"
+author: "Charlie Ha"
+date: "13/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Covid-19
+
+The world has been engaged in the fight against this pandemic. Several measures have been taken to flatten the curve. We have consequently experienced social distancing and many people have passes away around the world as well.
+
+In the solidarity to face this unprecedented global crisis, several organizations did not hesitate to share several datasets allowing the conduction of several kinds of analysis in order to gain a deeper understanding of this pandemic.
+
+Our analysis tries to provide answers to the following questions: 
+
+- Which countries have had the highest number of deaths due to COVID- 19?
+
+- Which countries have had the highest number of positive cases against the number of tests?
+- Which countries have made the best effort in terms of the number of COVID-19 tests conducted related to their population?
+- Which countries were ultimately the most and least affected related to their population?
+
+**Step 1: Understanding the Data**
+
+```{r} 
+#load readr package to allow us to read the dataset
+
+library(readr)
+covid_df <- read.csv("covid19.csv")
+
+```
+```{r}
+#Check the dimensions of the dataframe 
+
+dim(covid_df)
+
+#Store the column names into a vector
+
+vector_cols <- colnames(covid_df)
+vector_cols
+```
+
+```{r}
+# Sneak peek of the data using the glimpse function from tidyverse
+library(tidyverse)
+glimpse(covid_df)
+```
+As we can see, these function give us a summary of the data. There are 10903 rows and 14 columns of data. 
+
+**Isolating the Data**
+
+The column Province_state has mixed data from different levels so we must filter country-level data
+
+```{r}
+#Using the filter function to isolate all states
+
+library(dplyr)
+covid_df_all_states<-filter(covid_df, Province_State=="All States")
+```
+```{r}
+#Using the select function to select columns related to cumulative measures
+
+covid_df_all_states_cumulative<- select(covid_df_all_states,Date, Continent_Name, Two_Letter_Country_Code, positive, hospitalized, recovered, death, total_tested)
+
+```
+```{r}
+#Using the select function again to select columns related to daily measures
+
+covid_df_all_states_daily <- select(covid_df_all_states, Date, Country_Region, active, hospitalizedCurr, daily_tested, daily_positive)
+
+```
+
+**Identifying Countries with the Highest Number of Deaths**
+
+To determine which countries have had the highest number of deaths due to COVID-19, we can use data visualization to explore all the data at once. This provides a global view of the data. 
+
+```{r}
+#Sum up the total deaths by countries
+
+covid_df_all_states_cumulative_max <- covid_df_all_states_cumulative %>%
+  
+group_by(Continent_Name, Two_Letter_Country_Code)%>%
+filter(death>0)%>%
+summarise(total_death = sum(death),
+          total_positive = sum(positive),
+          total_hospitalized = sum(hospitalized),
+          total_recovered = sum(recovered),
+          sum_total = sum(total_tested)) %>%
+arrange(-total_death)
+
+```
+
+```{r}
+#Load ggplot2 to visualize the top deaths by country
+
+library(ggplot2)
+qplot(x=Two_Letter_Country_Code,
+      y=total_death,
+      colour=Continent_Name,
+      data=covid_df_all_states_cumulative_max)
+
+death_top_3<-c("US", "IT", "GB")
+
+```
+As we can see from the plot, the top three countries with the highest COVID-19 deaths are the United States of America, Italy, and Great Britain.
+
+**Extracting the Top Ten Tested Cases Countries**
+
+The data can now be agregated by country by summing up the daily totals. 
+```{r}
+covid_df_all_states_daily_sum <- covid_df_all_states_daily %>%
+
+group_by(Country_Region) %>%
+
+summarise(tested = sum(daily_tested),
+          positive = sum(daily_positive),
+          active = sum(active),
+          hospitalized = sum(hospitalizedCurr)) %>%
+arrange(-tested)
+```
+
+Let's isolate only the top ten countries:
+
+```{r}
+covid_top_10 <- head(covid_df_all_states_daily_sum, 10)
+
+print(covid_top_10)
+```
+**Identifying the Highest Positive Against Tested Cases**
+
+The data from the top countries can be stored into vectors for analysis
+
+```{r}
+#Column data is stored into vectors
+countries <- covid_top_10$Country_Region
+tested_cases <- covid_top_10$tested
+positive_cases <- covid_top_10$positive
+active_cases <- covid_top_10$active
+hospitalized_cases <- covid_top_10$hospitalized
+  
+#Vectors are named by their respective countries 
+names(tested_cases) <- countries
+names(positive_cases) <- countries
+names(active_cases) <- countries
+names(hospitalized_cases) <- countries
+
+#Calculating the ratio of positive cases against the number of tested cases
+pos_vs_test<-positive_cases/tested_cases
+print(pos_vs_test)
+
+positive_tested_top_3<-c("United Kingdom"=0.11, "United States"=0.10, "Turkey"=0.08)
+print(positive_tested_top_3)
+```
+We can see that United Kingdom has the highest number of positive cases of COVID-19 per total number of individuals tested. 
+
+**Scaling of Data to Population Level**
+
+To win this fight against the virus, each country has to defend itself as best it can. We can quantify this effort for the top ten tested cases at the population level of each country. 
+
+We first need the total population of each of the top ten countries: 
+
+- United States: 331,002,651
+- Russia: 145,934,462
+- Italy: 60,461,826
+- India: 1,380,004,385
+- Turkey: 84,339,067
+- Canada: 37,742,154
+- United Kingdom: 67,886,011
+- Australia: 25,499,884
+- Peru: 32,971,854
+- Poland: 37,846,611
+
+```{r}
+covid_mat <- cbind(tested_cases, positive_cases, active_cases, hospitalized_cases)
+population<- c(331002651, 145934462, 60461826, 1380004385, 84339067, 37742154, 67886011, 25499884, 32971854, 37846611)
+
+#Compare all data in proportion to the countries population
+covid_mat <- covid_mat*100/population
+print(covid_mat)
+```
+
+**Ranking Countries Related to their population**
+
+To be able to compare these values to determine how the countries have been impacted related to one another, we can rank each country.
+
+```{r}
+#ranking each column from previous Covid-19 matrix
+
+tested_cases_rank <- rank(covid_mat[,"tested_cases"])
+positive_cases_rank <- rank(covid_mat[,"positive_cases"])
+active_cases_rank <- rank(covid_mat[,"active_cases"])
+hospitalized_cases_rank <- rank(covid_mat[,"hospitalized_cases"])
+
+#bind each ranking by row
+covid_mat_rank <- rbind(tested_cases_rank,positive_cases_rank,active_cases_rank,hospitalized_cases_rank)
+covid_mat_rank
+```
+**Identifying Affected Countries Related to their Population**
+
+We can provide each country with an aggregate score by summing the rankings.
+
+```{r}
+colSums(covid_mat_rank[-1, ])
+
+```
+
+```{r}
+best_effort_tested_cased_top_3 <- c("India", "United Kingdom", "Turkey")
+most_affected_country <- "Italy"
+least_affected_country <- "India"
+```
+
+**Putting it all Together**
+
+Now that we have completed our analysis, lets review the questions we were trying to answer.
+
+**Which countries have had the highest number of deaths due to COVID- 19?**
+
+- United States of America, Italy and Great Britain
+
+**Which countries have had the highest number of positive cases against the number of tests?**
+
+- United Kingdom, United States of America and Turkey
+  
+**Which countries have made the best effort in terms of the number of COVID-19 tests conducted related to their population?**
+
+- India, United Kingdom and Turkey, in proportion to their population size
+
+**Which countries were ultimately the most and least affected related to their population?**
+
+- The most affected country was Italy and the least affected was India in proportion to their population size
