@@ -1,0 +1,143 @@
+---
+title: "Book Reviews"
+output: html_document
+---
+Today we have some book review data for us to analyze. We are trying to figure out, based on reviews and costs, which book is the most profitable for the company?
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Guided Project Solutions: Creating An Efficient Data Analysis Workflow
+
+
+```{r cars}
+#Loading the dataset
+library(tidyverse)
+book_reviews <- read.csv("book_reviews.csv")
+```
+
+**Step 1: Getting Familiar With the Data** 
+
+```{r}
+#Previewing the dataset
+dim(book_reviews)
+```
+```{r}
+#Previewing the column names of the dataset
+colnames(book_reviews)
+```
+We can see that there are 4 columns in this dataset called book, review, state and price. There are 2000 rows of data. 
+
+```{r}
+#Determining the type of data of each column
+
+for (names in colnames(book_reviews)){
+  type_of_data <- typeof(book_reviews[[names]])
+  type_of <- c(type_of_data)
+  print(type_of_data)
+}
+
+```
+```{r}
+
+# What are the unique values in each column?
+for (c in colnames(book_reviews)) {
+  print("Unique values in the column:")
+  print(c)
+  print(unique(book_reviews[[c]]))
+  print("")
+}
+```
+This allow us to sample the data and see what are the highs and lows of the data.
+
+**Step 2: Handling Missing Data**
+There are some rows with missing data so we will clean the data 
+```{r}
+#Filtering out missing book reviews
+
+filtered_book_reviews<-book_reviews %>%
+  filter(!is.na(review))
+
+ dim (filtered_book_reviews)
+```
+We removed about 200 reviews which were empty
+
+**Step 3: Dealing With Inconsistent Labels**
+
+The state column contains states which are inconsistent. 
+
+```{r}
+#Converting all state abbreviations to full state names
+
+full_state_book_reviews<-filtered_book_reviews%>%
+  
+  mutate(
+      state = case_when(
+      state == "TX" ~ "Texas",
+      state == "NY" ~ "New York",
+      state == "FL" ~ "Florida",
+      state == "CA" ~ "California",
+      TRUE ~ state
+      )
+  )
+```
+
+**Step 4: Transforming the Review Data**
+
+The review data is a character string but it would be more efficient if it was in numerical form
+
+```{r}
+#Converting review character into a numerical value 
+
+review_num <- full_state_book_reviews %>%
+  
+  mutate(
+    review= case_when(
+    review == "Poor" ~ 1,
+    review == "Fair" ~ 2,
+    review == "Good" ~ 3,
+    review == "Great" ~ 4,
+    review == "Excellent" ~ 5,
+  )
+  ) 
+
+```
+
+```{r}
+#Creating a new column to determine if review is high or not
+  
+  is_review_high <- review_num%>%
+    mutate(
+      review_num = case_when(
+        review <= 3 ~ FALSE,
+        review >= 4 ~ TRUE
+      )
+    )
+  
+```
+
+```{r}
+head(is_review_high)
+```
+The new dataframe of the book reviews is much cleaner for analysis
+
+**Step 5: Analyzing the Data**
+
+The most profitable book will be the book that made the most money. 
+
+```{r}
+
+profit_books <- is_review_high %>%
+  group_by(book)%>%
+  summarise(
+    profit = sum(price),
+    avg_review = mean(review),
+    price = mean(price)
+  ) %>%
+  arrange (-profit)
+print(profit_books)
+```
+**Conclusion**
+
+We can see that the most profitable book is Secrets if R for Advanced Students. 
