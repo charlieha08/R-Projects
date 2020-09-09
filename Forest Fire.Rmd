@@ -1,0 +1,134 @@
+---
+title: "Forest Fires"
+author: "Charlie Ha"
+date: "9/9/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+# Exploring Data Through Visualization: Idependent Investigations
+
+Forest fires are a major environmental issue, creating economical and ecological damage while endangering human lives. Fast detection is a key element for controlling such phenomenon. Since traditional human surveillance is expensive and affected by subjective factors, there has been an emphasis to develop automatic solutions.
+
+Today we are going to use data mining approach to predict forest fires using meterological Data in Portugal. We will use visual exploratory analyses on the data to conduct some predictive modeling. 
+
+
+```{r} 
+#Loading the packages and dataset
+
+library(readr)
+forest_fires <- read.csv("forestfires.csv")
+
+```
+
+**When Do Most Forest Fires Occur?**
+
+```{r}
+library (dplyr)
+
+#Count the number of forest fires in each month and plot it in a chart
+library (ggplot2)
+fire_occurance_m<-forest_fires %>%
+group_by (month)%>%
+  summarize(fires =n())
+  
+fire_occurance_m<-fire_occurance_m %>%
+   mutate(month = factor(month, levels = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")))
+
+ggplot(data = fire_occurance_m,
+          aes(x= month, y= fires))+
+  geom_bar(stat="identity")+
+  labs(title = "Number of Forest fires Occurring During each Month")+
+  labs(x= "Months")+
+  labs(y= "Total Fires")
+
+```
+```{r}
+#Count the number of forest fires on each day of the week and plot it in a chart
+fire_occurance_d<-forest_fires %>%
+group_by (day)%>%
+  summarize(fires =n())
+  
+fire_occurance_d<-fire_occurance_d %>%
+   mutate(day = factor(day, levels = c("sun", "mon", "tue", "wed", "thu", "fri", "sat")))
+
+ggplot(data = fire_occurance_d,
+          aes(x= day, y= fires))+
+  geom_bar(stat="identity")+
+    labs(title = "Number of Forest fires Occurring During each Day of the Week")+
+  labs(x= "Day of the Week")+
+  labs(y= "Total Fires")
+
+```
+
+It's clear that during the late summer months of August and September sees more forest fires that other months.  It also looks as though Friday, Saturday and Sunday have more forest fires than days in the middle of the week.
+
+Lets take a look at how the other variables related to forest fires by month and by day of the week. We can make multiple lots more efficiently by writing a function. 
+
+```{r}
+library (purrr)
+create_scatter <- function(x,y) {
+  forest_fires<-forest_fires %>%
+   mutate(month = factor(month, levels = c("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")))
+  
+  ggplot (data = forest_fires)+
+    aes_string(x=x, y=y)+
+    geom_boxplot()+
+  labs(x="Month")
+}
+x_var<- ("month")
+y_var<- c("FFMC", "DMC","DC", "ISI", "temp", "RH","wind", "rain")
+map2(x_var, y_var, create_scatter)
+
+```
+
+Unlike the variable distributions by days of the week, almost all the variables display clear differences among months. 
+
+Temperature shows a pattern of being higher during the summer months. We can also see that DC or dought code, which is measure of how dry conditions are, is high during the late summer months. 
+
+```{r}
+create_scatter <- function(x,y) {
+  forest_fires<-forest_fires %>%
+   mutate(day = factor(day, levels = c("sun", "mon", "tue", "wed", "thu", "fri", "sat")))
+  
+  ggplot (data = forest_fires)+
+    aes_string(x=x, y=y)+
+    geom_boxplot()+
+  labs(x="Day of the Week")
+}
+x_var<- ("day")
+y_var<- c("FFMC", "DMC","DC", "ISI", "temp", "RH","wind", "rain")
+map2(x_var, y_var, create_scatter)
+```
+
+**What observations can we make?**
+Let's look first at the distributions of variables by day of the week: 
+
+First, it's clear from looking at the solid black lines in the centres of the box plots that medians fore each variable seem to be quite consistent across days of the week. The size of the boxes are also consistent across days, suggesting that the ranges of data are similar.
+
+The number of outlier points and the length of the box whiskers representing high and low points vary from day to day. However, there do not seem to be any patterns that suggest that the variables differ by day of the week, despite the fact that the number of forest fires appears to be higher on weekends.
+
+**What Variables Are Related To Forest Fire Severity?**
+
+In this data set, the area variable contains data on the number of hectares of forest that burned during the forest fire. We can use this variable as an indicator of the severity of the fire. The idea is that worse fires will result in a larger burned area.
+
+```{r}
+create_scatter <- function(x,y) {
+  ggplot (data = forest_fires)+
+    aes_string(x=x, y=y)+
+    geom_point()
+}
+x_var<- c("FFMC", "DMC","DC", "ISI", "temp", "RH","wind", "rain")
+y_var<- ("area")
+map2(x_var, y_var, create_scatter)
+```
+
+**Conclusion**
+
+Forest fires cause a significant environmental damage while threatening human lives.We propose a Data Mining approach that uses meteorological data, as
+detected by local sensors in weather stations, and that is known to influence forest fires. The advantage is that such data can be collected in real-time and with very low costs, when compared with the satellite and scanner approaches
+
+Looking at the plots, we determined that forest fire predictions requires only four direct weather inputs (temperature, rain, relative humidity, and wind speed). 
+
+It's clear that August and September, late summer months in the Northern hemisphere, see more forest fires than other months. Friday, Saturday, and Sunday have more forest fires than days in the middle of the week.
+
